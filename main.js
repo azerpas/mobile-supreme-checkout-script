@@ -1,18 +1,16 @@
-
-
 (function () {
-    let keyWord = '+bear';  // +box,+logo,-bear
+    let keyWord = '+bloud+lust';  // +box,+logo,-bear
     let categories = ["Jackets", "Coats", "Shirts", "Tops/Sweaters", "Sweatshirts", "Pants", "Shorts", "T-Shirts", "Hats", "Bags", "Accessories", "Shoes", "Skate"]
     // 0 -> "Jackets", 1 -> "Coats", 2-> "Shirts", 3 -> "Tops/Sweaters", 4 ->"Sweatshirts", 5->"Pants", 6->"Shorts", 7->"T-Shirts",
     //8-> "Hats", 9->"Bags", 10->"Accessories", 11->"Shoes", 12->"Skate"
     let category = categories[10];
-    let preferredSize = '' 
-    let preferColor = 'grey'; 
-    let autoCheckout = true; 
+    let preferredSize = 'xlarge' 
+    let preferColor = 'mustard'; 
+    let autoCheckout = false; 
     let checkout_delay = 390; 
 
 
-
+    let cnType = 'master'; // master visa (Mastercard or Visa)
     let cnb = "4444444444444444";
     let month = "11";
     let year = "2022";
@@ -22,25 +20,28 @@
 
     let startTime = null;
     let respondJSON = null;
-    let isNew = true;
-    let item_selected = false;
+    let isNew = false;
+    let item_selected = true;
 
     let mobile_stock_api = "https://www.supremenewyork.com/mobile_stock.json";
     let event = document.createEvent('Event');
     event.initEvent('change', true, true); 
 
     let notifyHeader = document.createElement('p');
-    notifyHeader.style.cssText = "padding-left:120px;margin: auto;width: 100%;background-color: #70de4c;";
+    notifyHeader.style.cssText = "margin: auto;width: 100%;background-color: #70de4c;";
     let refresh_count = 0;
-    document.getElementsByTagName('header')[0].appendChild(notifyHeader);
+    let parentE = document.getElementsByTagName('body')[0]
+    parentE.insertBefore(notifyHeader,parentE.children[0]);
 
     let retryFetch = async (url, options=null, retry=0) => {
         if (retry >= 4) return Promise.resolve(1);
         let res = await fetch(url, options);
         if (res.status !== 200) {
+            console.log(res.status)
             await sleep(Math.min(retry * 500, 2 * 1000));
             return await retryFetch(url, options, retry + 1);
         } else {
+            console.log(res.status)
             return await res.json();
         }
     };
@@ -90,7 +91,7 @@
 
     async function monitor() {
         if (!item_selected) {
-            notifyHeader.innerHTML = '监测的产品。。。 次数： ' + refresh_count;
+            notifyHeader.innerHTML = 'Monitoring... Nb of refresh： ' + refresh_count;
             refresh_count ++;
             let refreshed = false;
                 
@@ -98,7 +99,7 @@
             refreshed = respond == null ? false : await mobileAPIRefreshed(respond);
             if (refreshed) {
                 respondJSON = respond;
-                startTime = new Date();
+                startTime = new Date().getTime();
                 console.log("Detect Page refreshed with mobile endpoint at: " + startTime.toISOString());
                 notifyHeader.innerHTML = "新品已经上线。。。如果页面没有跳转到商品页面请手动刷新并且重启程序。"
                 window.location.href = isNew? 'https://www.supremenewyork.com/mobile/#categories/new' : ('https://www.supremenewyork.com/mobile/#categories/' + category);
@@ -118,12 +119,13 @@
     let start = () => {
         console.log("start!!");
         let items = document.getElementsByClassName("name");
+        console.log(items);
         let selectedItem = null;
         if (items.length > 0) {
             notifyHeader.innerHTML = "寻找应物品中。。。如有卡顿，请手动点击商品图片。";
             for (item of items) {
                 let name = item.innerHTML;
-
+                console.log(name);
                 if (matchKeyWord(name, keyWord)) {
                     startTime = new Date().getTime();
                     selectedItem =item;
@@ -152,9 +154,11 @@
     }
 
     (function waitTillArticlePageIsOpen() {
-        console.log('wait item page ...');
+        console.log('Waiting for user choice...');
+        notifyHeader.innerHTML = 'Please open a product page to launch the add to cart';
         let atcBtn = document.getElementsByClassName("cart-button")[0];
         if (atcBtn) {
+            startTime = new Date().getTime();
             addToCart();
         } else {
             setTimeout(function(){ waitTillArticlePageIsOpen(); }, 150);
@@ -167,16 +171,17 @@
     async function addToCart(){
         if (document.getElementById('cart-update').children[0].innerHTML === "remove") {
             checkout();
+           //await sleep(20000);
             return;
         }
-        notifyHeader.innerHTML = "选择相颜色中。。。";
+        notifyHeader.innerHTML = "Choosing color";
         await chooseColor();
-        notifyHeader.innerHTML = "颜色选完毕。。。";
-        await sleep(89);
-        notifyHeader.innerHTML = "选择相尺码中。。。";
+        notifyHeader.innerHTML = "Sleeping...";
+        await sleep(899);
+        notifyHeader.innerHTML = "Choosing size";
         chooseSize();
-        notifyHeader.innerHTML = "尺码选完毕。。。";
-        await sleep(120);
+        notifyHeader.innerHTML = "Sleeping...";
+        await sleep(1200);
         let atcBtn = document.getElementsByClassName("cart-button")[0];
         atcBtn.click();
         item_selected = true;
@@ -188,7 +193,7 @@
                 return;
             } else {
                 // Click checkout button
-                notifyHeader.innerHTML = "已经入购物车";
+                notifyHeader.innerHTML = "Checking out!";
                 checkout()
                 return;
             }
@@ -251,8 +256,14 @@
 
         checkoutBtn = document.getElementById("submit_button");
         if (checkoutBtn) {
-            notifyHeader.innerHTML = "正在填写个信息。。。";
+            notifyHeader.innerHTML = "Checking out, inputing credit card";
         
+            if(document.getElementById('credit_card_type')){
+                await sleep(350);
+                document.getElementById('credit_card_type').focus();
+                document.getElementById('credit_card_type').value = cnType;
+                document.getElementById('credit_card_type').dispatchEvent(event);
+            }
             if (document.getElementById("credit_card_n")) {
                 await sleep(500);
                 document.getElementById("credit_card_n").focus();
@@ -281,7 +292,7 @@
                 document.getElementById("credit_card_cvv").value = vval;
             }
 
-            await sleep(299);      
+            await sleep(200);      
             document.getElementById("order_terms").click();
 
             notifyHeader.innerHTML = "请结账";
@@ -290,12 +301,16 @@
                 await sleep(checkout_delay);
                 document.getElementById("hidden_cursor_capture").click();
             }
+            else{
+                notifyHeader.innerHTML = "Auto Payment not activated, please proceed!"
+                console.log('Submit your order!')
+            }
             console.log('paymentTime: ' + (new Date().getTime() - startTime) + ' ms');
             notifyHeader.remove();
             return;
         } else {
             setTimeout(async function(){ await waitTillCheckoutPageIsOpen(); }, 200);
-            console.log("waiting to Chekcout...");
+            console.log("PLEASE OPEN CHECKOUT PAGE");
         }
     }
 
