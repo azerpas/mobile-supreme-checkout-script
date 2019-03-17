@@ -1,11 +1,11 @@
 (function () {
-    let keyWord = '+bloud+lust';  // +box,+logo,-bear
+    let keyWord = '+northface';  // +box,+logo,-bear
     let categories = ["Jackets", "Coats", "Shirts", "Tops/Sweaters", "Sweatshirts", "Pants", "Shorts", "T-Shirts", "Hats", "Bags", "Accessories", "Shoes", "Skate"]
     // 0 -> "Jackets", 1 -> "Coats", 2-> "Shirts", 3 -> "Tops/Sweaters", 4 ->"Sweatshirts", 5->"Pants", 6->"Shorts", 7->"T-Shirts",
     //8-> "Hats", 9->"Bags", 10->"Accessories", 11->"Shoes", 12->"Skate"
-    let category = categories[10];
-    let preferredSize = 'xlarge' 
-    let preferColor = 'mustard'; 
+    let category = categories[4];
+    let preferredSize = 'small' 
+    let preferColor = 'blue'; 
     let autoCheckout = false; 
     let checkout_delay = 390; 
 
@@ -21,17 +21,23 @@
     let startTime = null;
     let respondJSON = null;
     let isNew = false;
-    let item_selected = true;
+    let item_selected = false;
 
     let mobile_stock_api = "https://www.supremenewyork.com/mobile_stock.json";
     let event = document.createEvent('Event');
     event.initEvent('change', true, true); 
 
     let notifyHeader = document.createElement('p');
-    notifyHeader.style.cssText = "margin: auto;width: 100%;background-color: #70de4c;";
+    notifyHeader.style.cssText = "margin: auto;width: 100%;background-color: #70de4c;overflow:scroll;height:50px;";
     let refresh_count = 0;
+    let refreshRestock = 0;
     let parentE = document.getElementsByTagName('body')[0]
     parentE.insertBefore(notifyHeader,parentE.children[0]);
+
+    let notify = (message) =>{
+        notifyHeader.innerHTML = notifyHeader.innerHTML + message + "<br>";
+        notifyHeader.scrollTop = notifyHeader.scrollHeight;
+    };
 
     let retryFetch = async (url, options=null, retry=0) => {
         if (retry >= 4) return Promise.resolve(1);
@@ -67,6 +73,7 @@
         if (respond['products_and_categories'] == null || respond['products_and_categories']['new'] == null) {
             return false;
         }
+        console.log('Searching..');
         let newProducts = respond['products_and_categories']['new'];
         for (let index = 0; index < newProducts.length; index ++) {
             let item =newProducts[index];
@@ -91,17 +98,19 @@
 
     async function monitor() {
         if (!item_selected) {
-            notifyHeader.innerHTML = 'Monitoring... Nb of refresh： ' + refresh_count;
+            console.log('test')
+            notify('Monitoring... Nb of refresh： ' + refresh_count);
             refresh_count ++;
             let refreshed = false;
                 
             let respond = await retryFetch(mobile_stock_api);
             refreshed = respond == null ? false : await mobileAPIRefreshed(respond);
+            console.log('Found')
             if (refreshed) {
                 respondJSON = respond;
                 startTime = new Date().getTime();
-                console.log("Detect Page refreshed with mobile endpoint at: " + startTime.toISOString());
-                notifyHeader.innerHTML = "新品已经上线。。。如果页面没有跳转到商品页面请手动刷新并且重启程序。"
+                console.log("Detect Page refreshed with mobile endpoint at: " + new Date().toISOString());
+                notify("Product detected");
                 window.location.href = isNew? 'https://www.supremenewyork.com/mobile/#categories/new' : ('https://www.supremenewyork.com/mobile/#categories/' + category);
                 await sleep(230);
                 start();
@@ -122,13 +131,13 @@
         console.log(items);
         let selectedItem = null;
         if (items.length > 0) {
-            notifyHeader.innerHTML = "寻找应物品中。。。如有卡顿，请手动点击商品图片。";
+            notify("Looking for product... Choose manually if you're quick");
             for (item of items) {
                 let name = item.innerHTML;
                 console.log(name);
                 if (matchKeyWord(name, keyWord)) {
                     startTime = new Date().getTime();
-                    selectedItem =item;
+                    selectedItem = item;
                     selectedItem.click();
                     break;
                 }
@@ -155,7 +164,7 @@
 
     (function waitTillArticlePageIsOpen() {
         console.log('Waiting for user choice...');
-        notifyHeader.innerHTML = 'Please open a product page to launch the add to cart';
+        notify('Please open a product page to launch the add to cart');
         let atcBtn = document.getElementsByClassName("cart-button")[0];
         if (atcBtn) {
             startTime = new Date().getTime();
@@ -174,13 +183,13 @@
            //await sleep(20000);
             return;
         }
-        notifyHeader.innerHTML = "Choosing color";
+        notify("Choosing color");
         await chooseColor();
-        notifyHeader.innerHTML = "Sleeping...";
+        notify("Sleeping...");
         await sleep(899);
-        notifyHeader.innerHTML = "Choosing size";
+        notify("Choosing size");
         chooseSize();
-        notifyHeader.innerHTML = "Sleeping...";
+        notify("Sleeping...");
         await sleep(1200);
         let atcBtn = document.getElementsByClassName("cart-button")[0];
         atcBtn.click();
@@ -193,7 +202,7 @@
                 return;
             } else {
                 // Click checkout button
-                notifyHeader.innerHTML = "Checking out!";
+                notify("Checking out!");
                 checkout()
                 return;
             }
@@ -232,9 +241,35 @@
         return false;
     }
 
-    function chooseSize(){
+
+    // Test if it chooses size even if preferedSize not available
+    // add to notifyHeader and console
+    async function chooseSize(){
         let sizeOpts = document.getElementsByTagName("option");
-        let sizeVal = sizeOpts[0].value
+        try{
+            let sizeVal = sizeOpts[0].value;
+        }catch(error){
+            console.log('OUT OF STOCK');
+            notify("No sizes available");
+            // REFRESH
+            let productID = document.getElementById('product').getAttribute('data-product-id');
+            console.log('Refreshing restock... '+refreshRestock);
+            refreshRestock++;
+            let respond = await retryFetch('https://www.supremenewyork.com/shop/'+productID+'.json');
+            for(style of respond.styles){
+                console.log('Looking for stock: /'+productID+'/'+style.id);
+                if(checkAvaliability(style.sizes)){
+                    // if preferedSize not restricted
+                    console.log('Found size!');
+                    window.location.href = 'https://www.supremenewyork.com/mobile/#products/'+ productID + '/'+ style.id;
+                    chooseSize();
+                    return;
+                }
+            }
+            await sleep(1209);
+            chooseSize();
+            return;
+        }
         for (let option of sizeOpts){
             let size = option.text.toLowerCase();
             if (size === preferredSize.toLowerCase() || size === 'N/A'){
@@ -256,7 +291,7 @@
 
         checkoutBtn = document.getElementById("submit_button");
         if (checkoutBtn) {
-            notifyHeader.innerHTML = "Checking out, inputing credit card";
+            notify("Checking out, inputing credit card");
         
             if(document.getElementById('credit_card_type')){
                 await sleep(350);
@@ -295,18 +330,16 @@
             await sleep(200);      
             document.getElementById("order_terms").click();
 
-            notifyHeader.innerHTML = "请结账";
             if (autoCheckout){
-                notifyHeader.innerHTML = "自动结账中";
+                notify("Auto-checkout...");
                 await sleep(checkout_delay);
                 document.getElementById("hidden_cursor_capture").click();
             }
             else{
-                notifyHeader.innerHTML = "Auto Payment not activated, please proceed!"
+                notify("Auto Payment not activated, please proceed!");
                 console.log('Submit your order!')
             }
             console.log('paymentTime: ' + (new Date().getTime() - startTime) + ' ms');
-            notifyHeader.remove();
             return;
         } else {
             setTimeout(async function(){ await waitTillCheckoutPageIsOpen(); }, 200);
