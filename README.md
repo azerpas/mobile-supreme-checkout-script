@@ -5,10 +5,10 @@ Forked to make some tests to it.
 
 ## Installation
 
-Install it on IOS's shortcuts app as a javascript shortcut.
-Just C/P or download it from your phone.
-FR App Store: https://itunes.apple.com/fr/app/raccourcis/id915249334?mt=8
-You need to enable the share page from settings to use it on every app, incl Safari.
+Install it on IOS's shortcuts app as a javascript shortcut.    
+Just C/P or download it from your phone.    
+FR App Store: https://itunes.apple.com/fr/app/raccourcis/id915249334?mt=8      
+You need to enable the share page from settings to use it on every app, incl Safari.     
 
 ## Usage
 
@@ -24,6 +24,7 @@ I would recommend to login to Google with Safari to not trigger recaptcha.
 #### 0.1
 - Fixed header position
 - Began to translate some of the header log
+- Added credit card type auto-fill
 
 ## TO:DO
 - Fix monitor function
